@@ -1,0 +1,21 @@
+server:
+  port: 8890
+  host: http://localhost:8890/
+
+spring:
+  datasource:
+    username: postgres
+    password: postgres
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+    url: jdbc:p6spy:postgresql://127.0.0.1:5432/short-url
+
+mybatis-plus:
+  configuration:
+    cache-enabled: false
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/**/*Mapper.xml
+  global-config:
+    banner: false
+    db-config:
+      table-underline: true
+  config: classpath:log4j2-dev.xml

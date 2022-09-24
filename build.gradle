@@ -1,0 +1,40 @@
+plugins {
+	id 'org.springframework.boot' version '2.7.4'
+	id 'io.spring.dependency-management' version '1.0.14.RELEASE'
+	id 'java'
+}
+
+group = 'vip.stqr'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.2'
+	implementation("org.springframework.boot:spring-boot-starter-jdbc")
+	implementation("org.postgresql:postgresql")
+	// Hutool小而全的Java工具类库
+	implementation ('cn.hutool:hutool-all:5.8.6')
+	// Jedis is a Java client for Redis designed for performance and ease of use.
+	implementation ('redis.clients:jedis:4.2.3')
+	implementation("org.springdoc:springdoc-openapi-ui:1.6.11")
+	implementation("p6spy:p6spy:3.9.1")
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
