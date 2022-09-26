@@ -12,8 +12,7 @@ public interface UrlService {
 
     String getLongUrlByShortUrl(String shortURL);
 
-    String saveUrlMap(String shortURL, String longURL, String originalURL);
-    String saveUrlMap2(String longUrl, String createBy);
+    String saveUrlMap(String longUrl, String createBy);
 
     @Async
     void updateUrlViews(String shortURL);

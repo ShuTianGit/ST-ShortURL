@@ -32,14 +32,23 @@ public class UrlMap {
 	@Schema(description = "索引")
 	private Long id;
 
+    /**
+     * 短链接
+     */
     @Schema(description = "短链接标识")
     @Size(max = 2147483647)
     private String shortUrl;
 
+    /**
+     * 长链接
+     */
     @Schema(description = "长链接标识")
     @Size(max = 2147483647)
     private String longUrl;
 
+    /**
+     * 访问次数
+     */
     @Schema(description = "链接访问次数")
     @PositiveOrZero
     private Long accessCount;
@@ -48,6 +57,10 @@ public class UrlMap {
     @PositiveOrZero
     private Integer status;
 
+    /**
+     * 创建人
+     */
+    protected String createBy;
 	/**
 	 * 创建时间
 	 */

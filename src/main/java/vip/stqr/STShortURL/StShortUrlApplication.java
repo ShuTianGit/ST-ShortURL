@@ -14,6 +14,6 @@ public class StShortUrlApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(StShortUrlApplication.class, args);
+		System.err.println("http://localhost:8890/swagger-ui/index.html?configUrl=/v3/api-docs/swagger-config&docExpansion=none#/");
 	}
-
 }

@@ -1,22 +1,22 @@
 package vip.stqr.STShortURL.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import vip.stqr.STShortURL.entity.Result;
 import vip.stqr.STShortURL.service.UrlService;
 import vip.stqr.STShortURL.toolkit.UrlUtils;
 
 /**
- * TODO
+ * 长链接转短链接控制器
  *
  * @author 曙天
  * @since 2022-09-24 11:50
  */
+@Tag(name = "长链接转短链接")
 @Controller
 public class UrlController {
 
@@ -28,21 +28,20 @@ public class UrlController {
     public void setHost(String host) {
         UrlController.host = host;
     }
-
+    @Operation(summary = "长链接转短链接")
     @ResponseBody
-    @GetMapping("/generate")
-    public Result generateShortUrl(@RequestParam String longUrl) {
+    @PostMapping("/generate")
+    public Result generateShortUrl(@RequestParam String longUrl, @RequestParam String createBy) {
         if (UrlUtils.checkURL(longUrl)) {
             if (!longUrl.startsWith("http")) {
                 longUrl = "http://" + longUrl;
             }
-            // String shortURL = urlService.saveUrlMap(HashUtils.hashToBase62(longUrl), longUrl, longUrl);
-            String shortURL = urlService.saveUrlMap2(longUrl,"SDLJ11231LKDJF1");
+            String shortURL = urlService.saveUrlMap(longUrl,createBy);
             return Result.ok("请求成功", host + shortURL);
         }
         return Result.create(400, "URL有误");
     }
-
+    @Operation(summary = "短链接重定向")
     @GetMapping("/{shortURL}")
     public String redirect(@PathVariable String shortURL) {
         String longURL = urlService.getLongUrlByShortUrl(shortURL);

@@ -2,10 +2,10 @@ package vip.stqr.STShortURL.service.impl;
 
 import cn.hutool.bloomfilter.BitMapBloomFilter;
 import cn.hutool.bloomfilter.BloomFilterUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.db.nosql.redis.RedisDS;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import vip.stqr.STShortURL.entity.UrlMap;
@@ -13,6 +13,8 @@ import vip.stqr.STShortURL.mapper.UrlMapMapper;
 import vip.stqr.STShortURL.service.UrlService;
 import vip.stqr.STShortURL.toolkit.HashUtils;
 import vip.stqr.STShortURL.toolkit.HutoolRedisUtil;
+
+import java.util.Objects;
 
 /**
  * TODO
@@ -32,7 +34,7 @@ public class UrlServiceImpl implements UrlService {
     /**
      * 自定义长链接防重复字符串
      */
-    private static final String DUPLICATE = "*";
+    private static final String DUPLICATE = "ST";
 
     /**
      * 创建布隆过滤器
@@ -51,8 +53,8 @@ public class UrlServiceImpl implements UrlService {
         }
         //Redis没有缓存，从数据库查找
         longURL = urlMapMapper.selectOne(Wrappers.<UrlMap>lambdaQuery()
-                .select(UrlMap::getShortUrl)
-                .eq(UrlMap::getShortUrl, shortURL)).getShortUrl();
+                .select(UrlMap::getLongUrl)
+                .eq(UrlMap::getShortUrl, shortURL)).getLongUrl();
         if (longURL != null) {
             //数据库有此短链接，添加缓存
             redisDS.setStr(shortURL,longURL);
@@ -62,76 +64,44 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
-    public String saveUrlMap(String shortURL, String longURL, String originalURL) {
-
-        //保留长度为1的短链接
-        if (shortURL.length() == 1) {
-            longURL += DUPLICATE;
-            shortURL = saveUrlMap(HashUtils.hashToBase62(longURL), longURL, originalURL);
-        }
-
-        RedisDS redisDS = HutoolRedisUtil.getRedisDS("local");
-        Jedis jedis = redisDS.getJedis();
-        if (FILTER.contains(shortURL)) {
-            //存在，从Redis中查找是否有缓存
-            String redisLongUrl = redisDS.getStr(shortURL);
-            if (originalURL.equals(redisLongUrl)) {
-                //Redis有缓存，重置过期时间
-                jedis.expire(shortURL, TIMEOUT);
-                return shortURL;
-            }
-            //没有缓存，在长链接后加上指定字符串，重新hash
-            longURL += DUPLICATE;
-            shortURL = saveUrlMap(HashUtils.hashToBase62(longURL), longURL, originalURL);
-        }else {
-            //不存在，直接存入数据库
-            try {
-                UrlMap urlMap = new UrlMap();
-                urlMap.setLongUrl(originalURL);
-                urlMap.setShortUrl(shortURL);
-                urlMapMapper.insert(urlMap);
-                FILTER.add(shortURL);
-                //添加缓存
-                redisDS.setStr(shortURL,originalURL);
-                jedis.expire(shortURL, TIMEOUT);
-            } catch (Exception e) {
-                if (e instanceof DuplicateKeyException) {
-                    //数据库已经存在此短链接，则可能是布隆过滤器误判，在长链接后加上指定字符串，重新hash
-                    longURL += DUPLICATE;
-                    shortURL = saveUrlMap(HashUtils.hashToBase62(longURL), longURL, originalURL);
-                } else {
-                    throw e;
-                }
-            }
-        }
-        return shortURL;
-    }
-
-    @Override
-    public String saveUrlMap2(String longUrl, String createBy) {
+    public String saveUrlMap(String longUrl, String createBy) {
         String originalUrl = longUrl;
         longUrl = longUrl + createBy;
         String shortUrl = HashUtils.hashToBase62(longUrl);
 
         //保留长度为1的短链接
         if (shortUrl.length() == 1) {
-            longUrl += DUPLICATE;
-            shortUrl = saveUrlMap2(originalUrl,createBy);
+            createBy += IdUtil.simpleUUID();;
+            saveUrlMap(originalUrl,createBy);
         }
 
-        RedisDS redisDS = HutoolRedisUtil.getRedisDS("local");
-        Jedis jedis = redisDS.getJedis();
+        UrlMap dbUrlMap = urlMapMapper.selectOne(Wrappers.<UrlMap>lambdaQuery()
+                .select(UrlMap::getShortUrl,UrlMap::getLongUrl,UrlMap::getCreateBy)
+                .eq(UrlMap::getShortUrl, shortUrl));
 
-        String redisLongUrl = redisDS.getStr(shortUrl);
-        if (originalUrl.equals(redisLongUrl)) {
-            //Redis有缓存，重置过期时间
-            jedis.expire(shortUrl, TIMEOUT);
+        // 数据库中没有该短链接,直接生成
+        if(dbUrlMap == null) {
+            UrlMap urlMap = new UrlMap();
+            urlMap.setLongUrl(originalUrl);
+            urlMap.setShortUrl(shortUrl);
+            urlMap.setCreateBy(createBy);
+            urlMapMapper.insert(urlMap);
             return shortUrl;
         }
 
+        // 短链接相同,长链接不同,说明不同长链接Hash到了一样的值,需要重新Hash
+        if (Objects.equals(dbUrlMap.getShortUrl(), shortUrl) && !Objects.equals(dbUrlMap.getLongUrl(), originalUrl)){
+            createBy += IdUtil.simpleUUID();;
+            saveUrlMap(originalUrl,createBy);
+        }
 
+        // 短链接相同,长链接相同,不同创建人,需要重新Hash
+        if(Objects.equals(dbUrlMap.getShortUrl(), shortUrl) && Objects.equals(dbUrlMap.getLongUrl(), originalUrl) && !Objects.equals(dbUrlMap.getCreateBy(), createBy)) {
+            createBy += createBy + IdUtil.simpleUUID();;
+            saveUrlMap(originalUrl,createBy);
+        }
 
-        return null;
+        return dbUrlMap.getShortUrl();
     }
 
     @Override
